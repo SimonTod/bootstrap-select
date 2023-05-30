@@ -354,6 +354,14 @@ Options can be passed via data attributes or JavaScript. For data attributes, ap
       <p>Here you can supply your own sanitize function. This can be useful if you prefer to use a dedicated library to perform sanitization.</p>
     </td>
   </tr>
+  <tr>
+    <td>groupMultipleSelect</td>
+    <td>boolean</td>
+    <td><code>false</code></td>
+    <td>
+      <p>When used with multiple option, and opt groups, adds a checkbox next to opt groups labels to select/unselect all options within opt group.</p>
+    </td>
+  </tr>
   </tbody>
 </table>
 

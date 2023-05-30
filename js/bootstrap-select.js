@@ -809,7 +809,31 @@
 
       elementTemplates.fragment.appendChild(textElement);
 
-      return elementTemplates.fragment;
+      if (!this.multiple || !this.options.groupMultipleSelect) {
+        return elementTemplates.fragment;
+      }
+
+      var checkboxId = this.selectId + '-optgroup-' + options.optID + '-checkbox';
+
+      var checkboxDiv = elementTemplates.div.cloneNode(false);
+      checkboxDiv.className = 'form-check ps-3';
+      var checkboxLabel = document.createElement('label');
+      checkboxLabel.className = 'form-check-label';
+      checkboxLabel.setAttribute('for', checkboxId);
+      var checkboxInput = document.createElement('input');
+      checkboxInput.className = 'form-check-input';
+      checkboxInput.setAttribute('type', 'checkbox');
+      checkboxInput.setAttribute('id', checkboxId);
+      checkboxInput.setAttribute('data-opt-id', options.optID);
+      if (this.hasOptGroupAllSelected(options.optID)) {
+        checkboxInput.setAttribute('checked', 'checked');
+      }
+
+      checkboxLabel.appendChild(elementTemplates.fragment);
+      checkboxDiv.appendChild(checkboxLabel);
+      checkboxDiv.appendChild(checkboxInput);
+
+      return checkboxDiv;
     }
   };
 
@@ -998,7 +1022,8 @@
     display: false,
     sanitize: true,
     sanitizeFn: null,
-    whiteList: DefaultWhitelist
+    whiteList: DefaultWhitelist,
+    groupMultipleSelect: false
   };
 
   Selectpicker.prototype = {
@@ -2053,6 +2078,21 @@
         }
       }
 
+      if (this.multiple && this.options.groupMultipleSelect) {
+        var optGroupData = this.selectpicker.current.data.filter(function (datum) {
+          return datum.type === 'optgroup-label';
+        });
+
+        for (var i = 0; i < optGroupData.length; i++) {
+          var $checkbox = $('#' + this.selectId + '-optgroup-' + optGroupData[i].optID + '-checkbox');
+          if (this.hasOptGroupAllSelected(optGroupData[i].optID)) {
+            $checkbox.prop('checked', true);
+          } else {
+            $checkbox.prop('checked', false);
+          }
+        }
+      }
+
       this.$element.trigger('rendered' + EVENT_KEY);
     },
 
@@ -2899,6 +2939,21 @@
         }
       });
 
+      if (this.multiple && this.options.groupMultipleSelect) {
+        this.$menuInner.on('click', '.dropdown-header', function (e) {
+          var $checkbox = $(this).find('input[type="checkbox"].form-check-input');
+          $checkbox.prop('checked', !$checkbox.prop('checked'));
+          e.preventDefault();
+          e.stopPropagation();
+          var optID = $checkbox.data('opt-id');
+          if ($checkbox.prop('checked')) {
+            that.selectAllOptGroup(optID);
+          } else {
+            that.deselectAllOptGroup(optID);
+          }
+        });
+      }
+
       this.$menu.on('click', '.' + classNames.POPOVERHEADER + ' .close', function () {
         that.$button.trigger('click');
       });
@@ -3129,6 +3184,8 @@
           option.selected = status;
           liData.selected = status;
           if (status === true) currentSelected++;
+        } else if (liData.type === 'optgroup-label' && this.options.groupMultipleSelect) {
+          $(liData.element).find('input[type="checkbox"].form-check-input').prop('checked', status);
         }
       }
 
@@ -3150,6 +3207,71 @@
 
     deselectAll: function () {
       return this.changeAll(false);
+    },
+
+    changeAllOptGroup: function (optID, status) {
+      if (!this.multiple) return;
+      if (typeof status === 'undefined') status = true;
+
+      var element = this.$element[0],
+          previousSelected = 0,
+          currentSelected = 0,
+          prevValue = getSelectValues.call(this);
+
+      element.classList.add('bs-select-hidden');
+
+      var data = this.selectpicker.current.data.filter(function (item) {
+        return item.type === 'option' && item.optID === optID;
+      });
+
+      for (var i = 0, len = data.length; i < len; i++) {
+        var liData = data[i],
+            option = liData.option;
+
+        if (option && !liData.disabled && liData.type !== 'divider') {
+          if (liData.selected) previousSelected++;
+          option.selected = status;
+          liData.selected = status;
+          if (status === true) currentSelected++;
+        }
+      }
+
+      element.classList.remove('bs-select-hidden');
+
+      if (previousSelected === currentSelected) return;
+
+      this.setOptionStatus();
+
+      changedArguments = [null, null, prevValue];
+
+      this.$element.triggerNative('change');
+    },
+
+    selectAllOptGroup: function (optID) {
+      return this.changeAllOptGroup(optID, true);
+    },
+
+    deselectAllOptGroup: function (optID) {
+      return this.changeAllOptGroup(optID, false);
+    },
+
+    hasOptGroupAllSelected: function (optID) {
+      var optgroupData = this.selectpicker.current.data.find(function (datum) {
+        return datum.optID === optID && datum.type === 'optgroup-label';
+      });
+
+      if (!optgroupData) {
+        return false;
+      }
+
+      var optgroup = optgroupData.optgroup;
+
+      var selectedGroupOptionsCount = 0;
+      for (var i = 0; i < optgroup.children.length; i++) {
+        if (optgroup.children[i].selected) selectedGroupOptionsCount++;
+      }
+
+      return selectedGroupOptionsCount === optgroup.children.length;
     },
 
     toggle: function (e, state) {

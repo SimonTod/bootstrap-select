@@ -363,6 +363,15 @@ select.selectpicker {
       small {
         padding-left: 0.5em;
       }
+
+      &.dropdown-header .form-check {
+        text-align: left;
+
+        .form-check-input {
+          position: absolute;
+          right: 12px;
+        }
+      }
     }
 
     .notify {
